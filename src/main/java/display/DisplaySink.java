@@ -1,17 +1,16 @@
 package display;
 
-import org.apache.flink.api.java.tuple.Tuple2;
+
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import rich.RichHit;
-import rich.Track;
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DisplaySink extends RichSinkFunction<Tuple2<Track, List<RichHit>>> {
+public class DisplaySink extends RichSinkFunction<RichHit> {
 
     private static final int WIDTH = 240;
     private static final int HEIGHT = 240;
@@ -35,18 +34,12 @@ public class DisplaySink extends RichSinkFunction<Tuple2<Track, List<RichHit>>> 
     }
 
     @Override
-    public void invoke(Tuple2<Track, List<RichHit>> value, Context context) {
-        Track track = value.f0;
-        List<RichHit> hits = value.f1;
+    public void invoke(RichHit value, Context context) {
 
-        List<Point> points = new ArrayList<>();
-        for (RichHit h : hits) {
-            points.add(new Point(h.ix, h.iy));
-        }
+        MarkedPoint point = new MarkedPoint(value.ix, value.iy, value.isSignal);
 
         SwingUtilities.invokeLater(() -> {
-            panel.setTrack(track);
-            panel.setHits(points);
+            panel.addHit(point);
         });
     }
 }

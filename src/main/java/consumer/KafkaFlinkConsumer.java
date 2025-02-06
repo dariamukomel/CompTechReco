@@ -2,9 +2,11 @@ package consumer;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
+import org.apache.flink.util.Collector;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +28,7 @@ public class KafkaFlinkConsumer {
 
     public static void main(String[] args) throws Exception {
 
-        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(new Configuration());
         env.setParallelism(1);
 
         Properties properties = new Properties();
@@ -45,6 +47,8 @@ public class KafkaFlinkConsumer {
                                 .<RichHit>forBoundedOutOfOrderness(Duration.ofSeconds(1))
                                 .withTimestampAssigner((hit, ts) -> convertToNanoseconds(hit.timeSec, hit.timeNanosec))
                 );
+
+        hitDataStream.print();
 
         FlinkKafkaConsumer<Track> trackConsumer = new FlinkKafkaConsumer<>(
                 "TrackStream",
@@ -73,7 +77,25 @@ public class KafkaFlinkConsumer {
 //                })
 //                .print();
 
-        joinedStream.addSink(new DisplaySink());
+        DataStream<RichHit> signalHitStream = joinedStream
+                .flatMap((Tuple2<Track, List<RichHit>> value, Collector<RichHit> out) -> {
+                    for (RichHit hit : value.f1) {
+                        hit.isSignal = true;
+                        out.collect(hit);
+                    }
+                })
+                .returns(RichHit.class);
+
+        DataStream<RichHit> finalHitStream = hitDataStream
+                .keyBy(hit -> hit.ix + "_" + hit.iy + "_" + hit.timeSec + "_" + hit.timeNanosec)
+                .connect(signalHitStream .keyBy(hit -> hit.ix + "_" + hit.iy + "_" + hit.timeSec + "_" + hit.timeNanosec))
+                .process(new DeduplicateRichHitsFunction());
+
+        finalHitStream.addSink(new DisplaySink());
+
+
+
+
 
         env.execute("KafkaFlinkConsumer");
     }

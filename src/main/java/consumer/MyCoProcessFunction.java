@@ -18,7 +18,7 @@ import java.util.List;
 public class MyCoProcessFunction
         extends CoProcessFunction<Track, RichHit, Tuple2<Track, List<RichHit>>> {
 
-    private static final long INTERVAL_NS = 50000;
+    private static final long INTERVAL_NS = 100000;
 
     private transient ValueState<Track> trackState;     // храним последний Track
     private transient ListState<RichHit> hitsState;     // храним все Hits
@@ -75,10 +75,15 @@ public class MyCoProcessFunction
         long rightBoundary = trackNs + INTERVAL_NS;
 
         List<RichHit> collectedHits = new ArrayList<>();
+        List<RichHit> remainingHits = new ArrayList<>();
+
         for (RichHit hit : hitsState.get()) {
             long hitNs = convertToNanoseconds(hit.timeSec, hit.timeNanosec);
+
             if (hitNs >= leftBoundary && hitNs <= rightBoundary) {
                 collectedHits.add(hit);
+            } else if (hitNs > rightBoundary) {
+                remainingHits.add(hit);
             }
         }
 
@@ -86,6 +91,9 @@ public class MyCoProcessFunction
 
         trackState.clear();
         hitsState.clear();
+        for (RichHit hit : remainingHits) {
+            hitsState.add(hit);
+        }
     }
 
     private static long convertToNanoseconds(long timeSec, long timeNanosec) {

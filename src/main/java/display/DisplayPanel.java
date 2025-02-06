@@ -1,17 +1,19 @@
 package display;
 
-import rich.Track;
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class DisplayPanel extends JPanel {
     private int width;
     private int height;
-    private java.util.List<Point> hits = new ArrayList<>();
-    private Track track;
+    private List<MarkedPoint> hits = new ArrayList<>();
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     public DisplayPanel(int width, int height) {
         this.width = width;
@@ -19,14 +21,20 @@ public class DisplayPanel extends JPanel {
         setPreferredSize(new Dimension(width, height));
     }
 
-    public void setHits(List<Point> hits) {
-        this.hits = hits;
+    public synchronized void addHit(MarkedPoint hit) {
+        hits.add(hit);
         repaint();
+        // Удаляем точку через 200 мс
+        scheduler.schedule(() -> {
+            SwingUtilities.invokeLater(() -> {
+                synchronized (hits) {
+                    hits.remove(hit);
+                    repaint();
+                }
+            });
+        }, 500, TimeUnit.MILLISECONDS);
     }
 
-    public void setTrack(Track track) {
-        this.track = track;
-    }
 
     @Override
     protected void paintComponent(Graphics g) {
@@ -35,10 +43,12 @@ public class DisplayPanel extends JPanel {
         g.setColor(Color.WHITE);
         g.fillRect(0, 0, width, height);
 
-        // сигнальные хиты
-        g.setColor(Color.RED);
-        for (Point p : hits) {
+        // хиты
+        for (MarkedPoint p : hits) {
+            g.setColor(p.isSignal ? Color.RED : Color.GRAY);
             g.fillOval(p.x - 2, p.y - 2, 4, 4);
+
+
         }
     }
 }
