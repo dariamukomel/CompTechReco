@@ -1,5 +1,8 @@
 package rich;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class RichHit {
     public final int ix; // x position of pixel
     public final int iy; // y position of pixel
@@ -15,13 +18,29 @@ public class RichHit {
         this.isSignal = false;
     }
 
+    // ✅ Конструктор с аннотациями Jackson
+    @JsonCreator
+    public RichHit(
+            @JsonProperty("ix") int ix,
+            @JsonProperty("iy") int iy,
+            @JsonProperty("timeSec") long timeSec,
+            @JsonProperty("timeNanosec") long timeNanosec,
+            @JsonProperty("isSignal") boolean isSignal
+    ) {
+        this.ix = ix;
+        this.iy = iy;
+        this.timeSec = timeSec;
+        this.timeNanosec = timeNanosec;
+        this.isSignal = isSignal;
+    }
+
     @Override
     public String toString() {
         return "RichHit{" +
                 "ix=" + ix +
                 ", iy=" + iy +
-                ", time_seconds=" + timeSec +
-                ", time_nanoseconds=" + timeNanosec +
+                ", timeSec=" + timeSec +
+                ", timeNanosec=" + timeNanosec +
                 ", isSignal=" + isSignal +
                 '}';
     }

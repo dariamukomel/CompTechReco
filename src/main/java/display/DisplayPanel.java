@@ -12,19 +12,20 @@ import java.util.concurrent.TimeUnit;
 public class DisplayPanel extends JPanel {
     private int width;
     private int height;
+    private final int size = 400;
     private List<MarkedPoint> hits = new ArrayList<>();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     public DisplayPanel(int width, int height) {
         this.width = width;
         this.height = height;
-        setPreferredSize(new Dimension(width, height));
+        setPreferredSize(new Dimension(size, size));
     }
 
     public synchronized void addHit(MarkedPoint hit) {
         hits.add(hit);
         repaint();
-        // Удаляем точку через 200 мс
+        // Удаляем точку через 500 мс
         scheduler.schedule(() -> {
             SwingUtilities.invokeLater(() -> {
                 synchronized (hits) {
@@ -41,12 +42,14 @@ public class DisplayPanel extends JPanel {
         super.paintComponent(g);
         // фон
         g.setColor(Color.WHITE);
-        g.fillRect(0, 0, width, height);
+        g.fillRect(0, 0, size, size);
 
+        double scale = (double) size/width;
+        double pointSize = 4 * scale;
         // хиты
         for (MarkedPoint p : hits) {
             g.setColor(p.isSignal ? Color.RED : Color.GRAY);
-            g.fillOval(p.x - 2, p.y - 2, 4, 4);
+            g.fillOval((int)(p.x*scale - pointSize/2), (int)(p.y*scale - pointSize/2), (int)pointSize, (int)pointSize);
 
 
         }
